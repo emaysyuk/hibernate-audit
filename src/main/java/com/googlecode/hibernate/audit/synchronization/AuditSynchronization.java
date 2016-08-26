@@ -27,6 +27,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import javax.transaction.Status;
+import javax.transaction.Synchronization;
 import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
 
@@ -48,7 +49,7 @@ import com.googlecode.hibernate.audit.model.AuditTransaction;
 import com.googlecode.hibernate.audit.model.AuditTransactionAttribute;
 import com.googlecode.hibernate.audit.synchronization.work.AuditWorkUnit;
 
-public class AuditSynchronization implements BeforeTransactionCompletionProcess {
+public class AuditSynchronization implements BeforeTransactionCompletionProcess, Synchronization {
 	private static final Logger log = LoggerFactory.getLogger(AuditSynchronization.class);
 
 	private final AuditSynchronizationManager manager;
@@ -211,5 +212,28 @@ public class AuditSynchronization implements BeforeTransactionCompletionProcess 
 		auditConfiguration.getExtensionManager().getConcurrentModificationCheckProvider().concurrentModificationCheck(auditConfiguration, session, auditLogicalGroups, auditTransaction, loadAuditTransactionId);
 	}
 
+    public void beforeCompletion() {
+        if (workUnits.size() == 0) {
+            return;
+        }
+        if (!isMarkedForRollback(auditedSession)) {
+            try {
+                if (!FlushMode.isManualFlushMode(auditedSession.getFlushMode())) {
+                    auditedSession.flush();
+                }
+                executeInSession(auditedSession);
+            } catch (RuntimeException e) {
+                if (log.isErrorEnabled()) {
+                    log.error("RuntimeException occurred in beforeCompletion, will rollback and re-throw exception", e);
+                }
+                rollback();
+                throw e;
+            }
+        }
+    }
 
+    @Override
+    public void afterCompletion(int arg0) {
+        manager.remove(transaction);
+    }
 }

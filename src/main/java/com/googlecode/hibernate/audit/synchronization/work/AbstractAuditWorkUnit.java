@@ -73,7 +73,7 @@ public abstract class AbstractAuditWorkUnit implements AuditWorkUnit {
         } else if (propertyType.isComponentType()) {
             property = processComponentValue(session, auditConfiguration, auditEvent, auditObject, getEntityName(), object, propertyName, propertyValue, (CompositeType) propertyType);
         } else {
-            property = createSimpleValue(session, auditConfiguration, auditObject, getEntityName(), object, propertyName, propertyValue);
+            property = createSimpleValue(session, auditConfiguration, auditObject, getEntityName(), object, propertyName, propertyType, propertyValue);
         }
 
         if (property != null) {
@@ -106,7 +106,7 @@ public abstract class AbstractAuditWorkUnit implements AuditWorkUnit {
         property.setAuditObject(auditObject);
         property.setAuditField(auditField);
         property.setIndex(null);
-        property.setTargetEntityId(auditConfiguration.getExtensionManager().getPropertyValueConverter().toString(id));
+        property.setTargetEntityId(auditConfiguration.getExtensionManager().getPropertyValueConverter().toString(propertyType, id));
 
         return property;
     }
@@ -147,14 +147,14 @@ public abstract class AbstractAuditWorkUnit implements AuditWorkUnit {
     }
 
     protected SimpleObjectProperty createSimpleValue(Session session, AuditConfiguration auditConfiguration, AuditObject auditObject, String entityName, Object entity, String propertyName,
-            Object propertyValue) {
+            Type propertyType, Object propertyValue) {
         AuditTypeField auditField = HibernateAudit.getAuditField(session, auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(auditConfiguration.getAuditedConfiguration(), entityName), propertyName);
 
         SimpleObjectProperty property = new SimpleObjectProperty();
         property.setAuditObject(auditObject);
         property.setAuditField(auditField);
         property.setIndex(null);
-        property.setValue(auditConfiguration.getExtensionManager().getPropertyValueConverter().toString(propertyValue));
+        property.setValue(auditConfiguration.getExtensionManager().getPropertyValueConverter().toString(propertyType, propertyValue));
 
         return property;
     }
@@ -230,7 +230,7 @@ public abstract class AbstractAuditWorkUnit implements AuditWorkUnit {
                 tx = newSession.beginTransaction();
                 logicalGroup.setAuditType(auditType);
                 // when we are creating the audit logical group for the first time we set it to 0, this is before even we may have transaction record - this is executed in separate transaction
-                logicalGroup.setLastUpdatedAuditTransactionId(Long.valueOf(0)); 
+                logicalGroup.setLastUpdatedAuditTransactionId((long) 0);
                 newSession.save(logicalGroup);
                 tx.commit();
                 

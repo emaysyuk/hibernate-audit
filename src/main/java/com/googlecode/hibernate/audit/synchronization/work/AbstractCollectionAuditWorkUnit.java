@@ -58,15 +58,15 @@ public abstract class AbstractCollectionAuditWorkUnit extends AbstractAuditWorkU
             property = new EntityObjectProperty();
             property.setAuditObject(auditObject);
             property.setAuditField(auditField);
-            property.setIndex(new Long(index));
-            ((EntityObjectProperty)property).setTargetEntityId(auditConfiguration.getExtensionManager().getPropertyValueConverter().toString(id));
+            property.setIndex(index);
+            ((EntityObjectProperty)property).setTargetEntityId(auditConfiguration.getExtensionManager().getPropertyValueConverter().toString(null, id));
         } else if (elementType.isComponentType()) {
         	CompositeType componentType = (CompositeType) elementType;
 
             property = new ComponentObjectProperty();
             property.setAuditObject(auditObject);
             property.setAuditField(auditField);
-            property.setIndex(new Long(index));
+            property.setIndex(index);
             ComponentAuditObject targetComponentAuditObject = null;
 
             if (element != null) {
@@ -93,8 +93,8 @@ public abstract class AbstractCollectionAuditWorkUnit extends AbstractAuditWorkU
             property = new SimpleObjectProperty();
             property.setAuditObject(auditObject);
             property.setAuditField(auditField);
-            property.setIndex(new Long(index));
-            ((SimpleObjectProperty)property).setValue(auditConfiguration.getExtensionManager().getPropertyValueConverter().toString(element));
+            property.setIndex(index);
+            ((SimpleObjectProperty)property).setValue(auditConfiguration.getExtensionManager().getPropertyValueConverter().toString(null, element));
         }
         
         if (property != null) {

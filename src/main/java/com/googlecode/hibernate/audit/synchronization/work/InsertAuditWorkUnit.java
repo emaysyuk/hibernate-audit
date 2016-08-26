@@ -123,10 +123,10 @@ public class InsertAuditWorkUnit extends AbstractAuditWorkUnit {
 
     @Override
     protected SimpleObjectProperty createSimpleValue(Session session, AuditConfiguration auditConfiguration, AuditObject auditObject, String entityName, Object entity, String propertyName,
-            Object propertyValue) {
+            Type propertyType, Object propertyValue) {
         if (propertyValue != null) {
             // only record not null values
-            return super.createSimpleValue(session, auditConfiguration, auditObject, entityName, entity, propertyName, propertyValue);
+            return super.createSimpleValue(session, auditConfiguration, auditObject, entityName, entity, propertyName, propertyType, propertyValue);
         }
 
         return null;

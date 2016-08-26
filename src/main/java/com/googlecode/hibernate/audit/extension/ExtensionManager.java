@@ -34,6 +34,8 @@ import com.googlecode.hibernate.audit.extension.syncronization.DefaultTransactio
 import com.googlecode.hibernate.audit.extension.syncronization.TransactionSyncronization;
 import com.googlecode.hibernate.audit.extension.transaction.AuditTransactionAttributeProvider;
 import com.googlecode.hibernate.audit.extension.transaction.DefaultAuditTransactionAttributeProvider;
+import com.googlecode.hibernate.audit.extension.transaction.DefaultTransactionalContext;
+import com.googlecode.hibernate.audit.extension.transaction.TransactionalContext;
 
 public final class ExtensionManager {
     private AuditableInformationProvider auditableInformationProvider = new DefaultAuditableInformationProvider();
@@ -44,6 +46,7 @@ public final class ExtensionManager {
     private TransactionSyncronization transactionSyncronization = new DefaultTransactionSyncronization();
     private ConcurrentModificationProvider concurrentModificationProvider = new DefaultConcurrentModificationProvider();
     private ConcurrentModificationCheckProvider concurrentModificationCheckProvider = new DefaultConcurrentModificationCheckProvider();
+    private TransactionalContext transactionalContext = new DefaultTransactionalContext();
 
     public SecurityInformationProvider getSecurityInformationProvider() {
         return securityInformationProvider;
@@ -112,4 +115,12 @@ public final class ExtensionManager {
 			ConcurrentModificationCheckProvider concurrentModificationCheckProvider) {
 		this.concurrentModificationCheckProvider = concurrentModificationCheckProvider;
 	}
+
+    public TransactionalContext getTransactionalContext() {
+        return transactionalContext;
+    }
+
+    public void setTransactionalContext(TransactionalContext transactionalContext) {
+        this.transactionalContext = transactionalContext;
+    }
 }

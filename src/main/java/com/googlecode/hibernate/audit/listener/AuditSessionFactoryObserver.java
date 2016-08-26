@@ -6,12 +6,12 @@
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation; either version 3 of the License, or (at your
  * option) any later version.
- * 
+ *
  * Hibernate Audit is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with Hibernate Audit.  If not, see <http://www.gnu.org/licenses/>.
  *
@@ -22,15 +22,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 
-import javax.transaction.HeuristicMixedException;
-import javax.transaction.HeuristicRollbackException;
-import javax.transaction.InvalidTransactionException;
-import javax.transaction.NotSupportedException;
-import javax.transaction.RollbackException;
-import javax.transaction.SystemException;
-import javax.transaction.TransactionManager;
-
-import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.SessionFactoryObserver;
@@ -38,8 +29,6 @@ import org.hibernate.Transaction;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.spi.NamedQueryDefinition;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.engine.transaction.jta.platform.spi.JtaPlatform;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.metadata.ClassMetadata;
@@ -54,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import com.googlecode.hibernate.audit.HibernateAudit;
 import com.googlecode.hibernate.audit.configuration.AuditConfiguration;
+import com.googlecode.hibernate.audit.extension.transaction.TxCallback;
 import com.googlecode.hibernate.audit.model.clazz.AuditType;
 import com.googlecode.hibernate.audit.model.clazz.AuditTypeField;
 import com.googlecode.hibernate.audit.util.ConcurrentReferenceHashMap;
@@ -87,9 +77,9 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
     public static AuditConfiguration getAuditConfiguration(SessionFactory sessionFactory) {
         return CONFIGURATION_MAP.get(sessionFactory);
     }
-    
+
     private void initializeAuditMetatdata(SessionFactory sessionFactory) {
-        Collection<ClassMetadata> allClassMetadata = sessionFactory.getAllClassMetadata().values();
+        final Collection<ClassMetadata> allClassMetadata = sessionFactory.getAllClassMetadata().values();
 
         if (log.isInfoEnabled()) {
             log.info("Start building audit log metadata.");
@@ -99,69 +89,14 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
         try {
             try {
                 session = sessionFactory.openSession();
-                JtaPlatform jtaPlatform = ((SessionImplementor)session).getTransactionCoordinator().getTransactionContext().getTransactionEnvironment().getJtaPlatform();
-                TransactionManager jtaTransactionManager = null;
-                if (jtaPlatform != null) {
-                	jtaTransactionManager = jtaPlatform.retrieveTransactionManager();
-                }
-                
-                Transaction tx = null;
-                javax.transaction.Transaction jtaTransaction = null;
-                
-                try {
-					if (jtaTransactionManager != null) {
-						try {
-							jtaTransaction = jtaTransactionManager.suspend();
-							jtaTransactionManager.begin();
-						} catch (NotSupportedException e) {
-							throw new HibernateException(e);
-						} catch (SystemException e) {
-							throw new HibernateException(e);
-						}
-					} else {
-					    tx = session.beginTransaction();
-					}
+                final Session openedSession = session;
+                auditConfiguration.getExtensionManager().getTransactionalContext().runInTx(session, new TxCallback() {
+                    @Override
+                    public void execute() {
+                        updateAuditMetadata(auditConfiguration, allClassMetadata, openedSession);
+                    }
+                });
 
-					for (ClassMetadata classMetadata : allClassMetadata) {
-					    String entityName = classMetadata.getEntityName();
-					    if (auditConfiguration.getExtensionManager().getAuditableInformationProvider().isAuditable(entityName)) {
-					        initializeEntityAuditType(session, entityName, true);
-					        session.flush();
-					    }
-					}
-					
-					if (jtaTransactionManager != null) {
-						try {
-							jtaTransactionManager.commit();
-						} catch (SecurityException e) {
-							throw new HibernateException(e);
-						} catch (IllegalStateException e) {
-							throw new HibernateException(e);
-						} catch (RollbackException e) {
-							throw new HibernateException(e);
-						} catch (HeuristicMixedException e) {
-							throw new HibernateException(e);
-						} catch (HeuristicRollbackException e) {
-							throw new HibernateException(e);
-						} catch (SystemException e) {
-							throw new HibernateException(e);
-						}
-					} else if (tx != null) {
-						tx.commit();
-					}
-				} finally {
-	            	if (jtaTransactionManager != null && jtaTransaction != null) {
-            			try {
-							jtaTransactionManager.resume(jtaTransaction);
-						} catch (InvalidTransactionException e) {
-							throw new HibernateException(e);
-						} catch (IllegalStateException e) {
-							throw new HibernateException(e);
-						} catch (SystemException e) {
-							throw new HibernateException(e);
-						}
-	            	}
-				}
             } finally {
                 if (session != null && session.isOpen()) {
                     session.close();
@@ -174,10 +109,22 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
         }
     }
 
+    private void updateAuditMetadata(AuditConfiguration auditConfiguration, Collection<ClassMetadata> allClassMetadata, Session session) {
+        for (ClassMetadata classMetadata : allClassMetadata) {
+            String entityName = classMetadata.getEntityName();
+
+            if (auditConfiguration.getExtensionManager().getAuditableInformationProvider().isAuditable(entityName)) {
+
+                initializeEntityAuditType(session, entityName, true);
+                session.flush();
+            }
+        }
+    }
+
     private AuditType initializeEntityAuditType(Session session, String entityName, boolean initializeProperties) {
         PersistentClass classMapping = configuration.getClassMapping(entityName);
         String auditTypeClassName = auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(configuration, entityName);
-        
+
         AuditType auditType = HibernateAudit.getAuditType(session, auditTypeClassName);
         if (auditType == null) {
             auditType = new AuditType();
@@ -195,7 +142,7 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
                 initializeAuditField(session, auditTypeClassName, auditType, identifierProperty.getName(), identifierProperty.getType());
             }
 
-            for (Iterator propertyIterator = classMapping.getPropertyClosureIterator(); propertyIterator.hasNext();) {
+            for (Iterator propertyIterator = classMapping.getPropertyClosureIterator(); propertyIterator.hasNext(); ) {
                 Property property = (Property) propertyIterator.next();
                 initializeAuditField(session, auditTypeClassName, auditType, property.getName(), property.getType());
             }
@@ -226,8 +173,8 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
     }
 
     private AuditType initializePrimitiveAuditType(Session session, Type type) {
-    	String auditTypeClassName = auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(configuration, type);
-    	AuditType auditType = HibernateAudit.getAuditType(session, auditTypeClassName);
+        String auditTypeClassName = auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(configuration, type);
+        AuditType auditType = HibernateAudit.getAuditType(session, auditTypeClassName);
 
         if (auditType == null) {
             auditType = new AuditType();
@@ -292,15 +239,15 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
         session.flush();
         NamedQueryDefinition selectAuditTypeNamedQueryDefinition = ((SessionFactoryImplementor) session.getSessionFactory()).getNamedQuery(HibernateAudit.SELECT_AUDIT_TYPE_BY_CLASS_NAME);
         NamedQueryDefinition selectAuditTypeFieldNamedQueryDefinition = ((SessionFactoryImplementor) session.getSessionFactory()).getNamedQuery(HibernateAudit.SELECT_AUDIT_TYPE_FIELD_BY_CLASS_NAME_AND_PROPERTY_NAME);
-        
+
         if (selectAuditTypeNamedQueryDefinition.isCacheable() && selectAuditTypeNamedQueryDefinition.getCacheRegion() != null) {
             session.getSessionFactory().evictQueries(selectAuditTypeNamedQueryDefinition.getCacheRegion());
         }
-        
+
         if (selectAuditTypeFieldNamedQueryDefinition.isCacheable() && selectAuditTypeFieldNamedQueryDefinition.getCacheRegion() != null) {
             session.getSessionFactory().evictQueries(selectAuditTypeFieldNamedQueryDefinition.getCacheRegion());
         }
-        
+
         session.getSessionFactory().evictEntity(AuditType.class.getName());
         session.getSessionFactory().evictEntity(AuditTypeField.class.getName());
     }

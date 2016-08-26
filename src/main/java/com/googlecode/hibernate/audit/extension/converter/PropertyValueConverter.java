@@ -18,8 +18,10 @@
  */
 package com.googlecode.hibernate.audit.extension.converter;
 
+import org.hibernate.type.Type;
+
 public interface PropertyValueConverter {
-    String toString(Object obj);
+    String toString(Type propertyType, Object obj);
 
     Object valueOf(Class type, String str);
 }

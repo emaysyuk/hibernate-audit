@@ -27,6 +27,8 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 
+import org.hibernate.type.Type;
+
 public class DefaultPropertyValueConverter implements PropertyValueConverter {
     private static final ThreadLocal<DateFormat> DATE_FORMAT = new ThreadLocal<DateFormat>() {
         protected DateFormat initialValue() {
@@ -34,7 +36,7 @@ public class DefaultPropertyValueConverter implements PropertyValueConverter {
         }
     };
 
-    public String toString(Object obj) {
+    public String toString(Type propertyType, Object obj) {
         if (obj == null) {
             return null;
         }
