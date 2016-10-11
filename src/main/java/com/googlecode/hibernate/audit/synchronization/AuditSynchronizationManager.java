@@ -6,30 +6,24 @@
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation; either version 3 of the License, or (at your
  * option) any later version.
- *
+ * 
  * Hibernate Audit is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License along
  * with Hibernate Audit.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 package com.googlecode.hibernate.audit.synchronization;
 
-import java.util.Map;
-
-import javax.transaction.Synchronization;
-
-import org.hibernate.Transaction;
-import org.hibernate.action.spi.AfterTransactionCompletionProcess;
-import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.engine.transaction.internal.jta.CMTTransaction;
-import org.hibernate.event.spi.EventSource;
-
 import com.googlecode.hibernate.audit.configuration.AuditConfiguration;
 import com.googlecode.hibernate.audit.util.ConcurrentReferenceHashMap;
+import org.hibernate.Transaction;
+import org.hibernate.event.spi.EventSource;
+
+import java.util.Map;
 
 public final class AuditSynchronizationManager {
     private final Map<Transaction, AuditSynchronization> syncronizations = new ConcurrentReferenceHashMap<Transaction, AuditSynchronization>(16, ConcurrentReferenceHashMap.ReferenceType.WEAK,
@@ -46,20 +40,9 @@ public final class AuditSynchronizationManager {
 
         AuditSynchronization synchronization = syncronizations.get(transaction);
         if (synchronization == null) {
-            boolean cmt = transaction instanceof CMTTransaction;
             synchronization = new AuditSynchronization(this, session);
             syncronizations.put(transaction, synchronization);
-
-            if (!cmt) {
-                session.getActionQueue().registerProcess(synchronization);
-                session.getActionQueue().registerProcess(new AfterTransactionCompletionProcess() {
-                    public void doAfterTransactionCompletion(boolean success, SessionImplementor session) {
-                        syncronizations.remove(transaction);
-                    }
-                });
-            } else {
-                auditConfiguration.getExtensionManager().getTransactionSyncronization().registerSynchronization(session, synchronization);
-            }
+            auditConfiguration.getExtensionManager().getTransactionSyncronization().registerSynchronization(session, synchronization);
         }
 
         return synchronization;

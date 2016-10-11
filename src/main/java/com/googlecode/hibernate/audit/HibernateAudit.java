@@ -18,19 +18,15 @@
  */
 package com.googlecode.hibernate.audit;
 
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.hibernate.Hibernate;
 import org.hibernate.Query;
 import org.hibernate.Session;
-import org.hibernate.mapping.PersistentClass;
-import org.hibernate.metadata.ClassMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.googlecode.hibernate.audit.configuration.AuditConfiguration;
 import com.googlecode.hibernate.audit.listener.AuditSessionFactoryObserver;
@@ -297,12 +293,11 @@ public final class HibernateAudit {
     }
 
     public static String getEntityName(AuditConfiguration configuration, Session session, String auditTypeClassName) {
-    	return configuration.getExtensionManager().getAuditableInformationProvider().getEntityName(configuration.getAuditedConfiguration(), session, auditTypeClassName);
+    	return configuration.getExtensionManager().getAuditableInformationProvider().getEntityName(configuration.getHibernateMetadata(), session, auditTypeClassName);
     }
 
     public static AuditConfiguration getAuditConfiguration(Session session) {
-        AuditConfiguration auditConfiguration = AuditSessionFactoryObserver.getAuditConfiguration(session.getSessionFactory());
-        return auditConfiguration;
+        return AuditSessionFactoryObserver.getAuditConfiguration(session.getSessionFactory());
     }
 
 }

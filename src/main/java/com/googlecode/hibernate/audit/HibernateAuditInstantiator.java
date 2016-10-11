@@ -19,10 +19,9 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.persister.entity.AbstractEntityPersister;
-import org.hibernate.property.BasicPropertyAccessor;
-import org.hibernate.property.DirectPropertyAccessor;
-import org.hibernate.property.PropertyAccessor;
-import org.hibernate.property.Setter;
+import org.hibernate.property.access.internal.PropertyAccessStrategyBasicImpl;
+import org.hibernate.property.access.internal.PropertyAccessStrategyFieldImpl;
+import org.hibernate.property.access.spi.Setter;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.type.CollectionType;
 import org.hibernate.type.ComponentType;
@@ -41,8 +40,6 @@ import com.googlecode.hibernate.audit.model.property.EntityObjectProperty;
 import com.googlecode.hibernate.audit.model.property.SimpleObjectProperty;
 
 public final class HibernateAuditInstantiator {
-    private static final PropertyAccessor BASIC_PROPERTY_ACCESSOR = new BasicPropertyAccessor();
-    private static final PropertyAccessor DIRECT_PROPERTY_ACCESSOR = new DirectPropertyAccessor();
 
     private static final ThreadLocal<Map<EntityKey, Object>> KEY_TO_OBJECT_CONTEXT = new ThreadLocal<Map<EntityKey, Object>>() {
         @Override
@@ -374,9 +371,9 @@ public final class HibernateAuditInstantiator {
 
     private static Setter setter(Class clazz, String name) throws MappingException {
         try {
-            return BASIC_PROPERTY_ACCESSOR.getSetter(clazz, name);
+            return PropertyAccessStrategyBasicImpl.INSTANCE.buildPropertyAccess(clazz, name).getSetter();
         } catch (PropertyNotFoundException pnfe) {
-            return DIRECT_PROPERTY_ACCESSOR.getSetter(clazz, name);
+            return PropertyAccessStrategyFieldImpl.INSTANCE.buildPropertyAccess(clazz, name).getSetter();
         }
     }
 

@@ -78,7 +78,7 @@ public class InsertCollectionAuditWorkUnit extends AbstractCollectionAuditWorkUn
             return;
         }
 
-        AuditType auditType = HibernateAudit.getAuditType(session, auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(auditConfiguration.getAuditedConfiguration(), entityName));
+        AuditType auditType = HibernateAudit.getAuditType(session, auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(auditConfiguration.getHibernateMetadata(), entityName));
         auditEvent = new AuditEvent();
         auditEvent.setAuditType(auditType);
         auditEvent.setType(AuditEvent.ADD_AUDIT_EVENT_TYPE);

@@ -317,14 +317,14 @@
 			<column name="`LABEL_NAME`" length="255" />
 		</property>
 		<bag name="auditFields" inverse="true" lazy="false" fetch="join">
-			<cache usage="nonstrict-read-write" region="com.googlecode.hibernate.audit.model.clazz" />
+			<cache usage="nonstrict-read-write" region="com.googlecode.hibernate.audit.model.collection" />
 			<key column="`OWNER_AUDIT_TYPE_ID`" />
 			<one-to-many
 				class="com.googlecode.hibernate.audit.model.clazz.AuditTypeField" />
 		</bag>
 		<bag name="auditTypeAttributes" cascade="all" inverse="true"
 			lazy="true">
-			<cache usage="nonstrict-read-write" region="com.googlecode.hibernate.audit.model.clazz" />
+			<cache usage="nonstrict-read-write" region="com.googlecode.hibernate.audit.model.collection" />
 			<key column="`AUDIT_TYPE_ID`" />
 			<one-to-many
 				class="com.googlecode.hibernate.audit.model.clazz.AuditTypeAttribute" />
@@ -394,7 +394,7 @@
 		</property>
 		<bag name="auditTypeFieldAttributes" cascade="all" inverse="true"
 			lazy="true">
-			<cache usage="nonstrict-read-write" region="com.googlecode.hibernate.audit.model.clazz" />
+			<cache usage="nonstrict-read-write" region="com.googlecode.hibernate.audit.model.collection" />
 			<key column="`AUDIT_TYPE_FIELD_ID`" />
 			<one-to-many
 				class="com.googlecode.hibernate.audit.model.clazz.AuditTypeFieldAttribute" />

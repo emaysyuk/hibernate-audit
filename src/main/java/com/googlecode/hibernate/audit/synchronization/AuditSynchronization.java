@@ -40,6 +40,7 @@ import org.hibernate.action.spi.BeforeTransactionCompletionProcess;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.engine.transaction.jta.platform.spi.JtaPlatform;
+import org.hibernate.resource.transaction.spi.TransactionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +77,7 @@ public class AuditSynchronization implements BeforeTransactionCompletionProcess,
 		}
 		if (!isMarkedForRollback(auditedSession)) {
 			try {
-				if (FlushMode.isManualFlushMode(auditedSession.getFlushMode())) {
+				if (FlushMode.MANUAL == auditedSession.getFlushMode()) {
 					 Session temporarySession = null;
 					try {
 						temporarySession = ((Session) session).sessionWithOptions().transactionContext()
@@ -121,7 +122,7 @@ public class AuditSynchronization implements BeforeTransactionCompletionProcess,
 				throw new TransactionException("Unable to get the transaction status.", e);
 			}
 		} else {
-			return session.getTransaction().wasRolledBack();
+			return session.getTransaction().getStatus() == TransactionStatus.ROLLED_BACK;
 		}
 
 		return false;
@@ -129,7 +130,7 @@ public class AuditSynchronization implements BeforeTransactionCompletionProcess,
 
 	private void rollback() {
 		try {
-			if (auditedSession != null && auditedSession.getTransaction() != null && auditedSession.getTransaction().isActive()) {
+			if (auditedSession != null && auditedSession.getTransaction() != null && auditedSession.getTransaction().getStatus() == TransactionStatus.ACTIVE) {
 				auditedSession.getTransaction().rollback();
 			} else if (auditedSession != null && ((SessionFactoryImplementor) auditedSession.getSessionFactory()).getSettings().getJtaPlatform() != null) {
 				TransactionManager transactionManager = ((SessionFactoryImplementor) auditedSession.getSessionFactory()).getSettings().getJtaPlatform().retrieveTransactionManager();

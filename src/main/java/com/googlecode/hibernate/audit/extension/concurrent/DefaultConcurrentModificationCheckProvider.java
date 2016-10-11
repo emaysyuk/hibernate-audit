@@ -5,10 +5,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.hibernate.LockMode;
 import org.hibernate.Session;
+import org.hibernate.resource.transaction.spi.TransactionStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.googlecode.hibernate.audit.HibernateAudit;
 import com.googlecode.hibernate.audit.configuration.AuditConfiguration;
@@ -123,7 +124,7 @@ public class DefaultConcurrentModificationCheckProvider implements ConcurrentMod
 			AuditTypeField firstDetectedmodifiedAuditTypeField = modifiedAuditTypeFieldsIterator.next();
 
 			if (ConcurrentModificationBehavior.THROW_EXCEPTION.equals(auditConfiguration.getExtensionManager().getConcurrentModificationProvider().getCheckBehavior())) {
-				if (session.getTransaction().isActive()) {
+				if (session.getTransaction().getStatus() == TransactionStatus.ACTIVE) {
 					session.getTransaction().rollback();
 				}
 				throw new PropertyConcurrentModificationException(firstDetectedmodifiedAuditTypeField.getOwnerType().getClassName(), firstDetectedmodifiedAuditTypeField.getName(),
@@ -170,7 +171,7 @@ public class DefaultConcurrentModificationCheckProvider implements ConcurrentMod
 		Long latestEntityTransactionId = HibernateAudit.getLatestAuditTransactionIdByEntityAndAfterAuditTransactionId(session, auditType, targetEntityId, loadAuditTransactionId);
 		if (latestEntityTransactionId != null && !latestEntityTransactionId.equals(loadAuditTransactionId)) {
 			if (ConcurrentModificationBehavior.THROW_EXCEPTION.equals(auditConfiguration.getExtensionManager().getConcurrentModificationProvider().getCheckBehavior())) {
-				if (session.getTransaction().isActive()) {
+				if (session.getTransaction().getStatus() == TransactionStatus.ACTIVE) {
 					session.getTransaction().rollback();
 				}
 				throw new ObjectConcurrentModificationException(auditType.getClassName(), auditType.getLabel(), targetEntityId);
