@@ -77,7 +77,7 @@ public class AuditSynchronization implements BeforeTransactionCompletionProcess,
 		}
 		if (!isMarkedForRollback(auditedSession)) {
 			try {
-				if (FlushMode.MANUAL == auditedSession.getFlushMode()) {
+				if (FlushMode.MANUAL == auditedSession.getHibernateFlushMode()) {
 					 Session temporarySession = null;
 					try {
 						temporarySession = ((Session) session).sessionWithOptions().transactionContext()
@@ -197,7 +197,7 @@ public class AuditSynchronization implements BeforeTransactionCompletionProcess,
 				storedAuditLogicalGroup.setLastUpdatedAuditTransactionId(auditTransaction.getId());
 			}
 
-			if (!FlushMode.isManualFlushMode(session.getFlushMode())) {
+			if (!FlushMode.isManualFlushMode(session.getHibernateFlushMode())) {
 				session.flush();
 			}
 		} finally {
@@ -219,7 +219,7 @@ public class AuditSynchronization implements BeforeTransactionCompletionProcess,
         }
         if (!isMarkedForRollback(auditedSession)) {
             try {
-                if (!FlushMode.isManualFlushMode(auditedSession.getFlushMode())) {
+                if (!FlushMode.isManualFlushMode(auditedSession.getHibernateFlushMode())) {
                     auditedSession.flush();
                 }
                 executeInSession(auditedSession);
