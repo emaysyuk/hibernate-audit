@@ -18,7 +18,6 @@
  */
 package com.googlecode.hibernate.audit.listener;
 
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -28,9 +27,9 @@ import org.hibernate.SessionFactoryObserver;
 import org.hibernate.boot.Metadata;
 import org.hibernate.engine.spi.NamedQueryDefinition;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.internal.SessionFactoryImpl;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
-import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.stat.Statistics;
 import org.hibernate.type.CollectionType;
 import org.hibernate.type.ComponentType;
@@ -76,8 +75,7 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
     }
 
     private void initializeAuditMetatdata(SessionFactory sessionFactory) {
-        final Collection<ClassMetadata> allClassMetadata = sessionFactory.getAllClassMetadata().values();
-
+        final String[] allClassMetadata = ((SessionFactoryImpl) sessionFactory).getMetamodel().getAllEntityNames();
         if (log.isInfoEnabled()) {
             log.info("Start building audit log metadata.");
         }
@@ -106,13 +104,12 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
         }
     }
 
-    private void updateAuditMetadata(AuditConfiguration auditConfiguration, Collection<ClassMetadata> allClassMetadata, Session session) {
-        for (ClassMetadata classMetadata : allClassMetadata) {
-            String entityName = classMetadata.getEntityName();
+    private void updateAuditMetadata(AuditConfiguration auditConfiguration, String[] allClassMetadata, Session session) {
+        for (String classMetadata : allClassMetadata) {
 
-            if (auditConfiguration.getExtensionManager().getAuditableInformationProvider().isAuditable(entityName)) {
+            if (auditConfiguration.getExtensionManager().getAuditableInformationProvider().isAuditable(classMetadata)) {
 
-                initializeEntityAuditType(session, entityName, true);
+                initializeEntityAuditType(session, classMetadata, true);
                 session.flush();
             }
         }

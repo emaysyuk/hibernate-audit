@@ -10,7 +10,6 @@ import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EventType;
 import org.hibernate.integrator.spi.Integrator;
 import org.hibernate.internal.CoreMessageLogger;
-import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.service.spi.SessionFactoryServiceRegistry;
 import org.jboss.logging.Logger;
 
@@ -25,13 +24,13 @@ public class AuditIntegrator implements Integrator {
 
     private static final String AUTO_REGISTER = "com.googlecode.hibernate.audit.listener.autoRegister";
 
-    private static final Map<SessionFactoryImplementor, AuditListener> MAP = new ConcurrentReferenceHashMap<SessionFactoryImplementor, AuditListener>(16,
+    private static final Map<SessionFactoryImplementor, AuditListener> MAP = new ConcurrentReferenceHashMap<>(16,
             ConcurrentReferenceHashMap.ReferenceType.WEAK, ConcurrentReferenceHashMap.ReferenceType.STRONG);
 
 
     public void integrate(Metadata metadata, SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
-        final boolean autoRegister = ConfigurationHelper.getBoolean(AUTO_REGISTER, sessionFactory.getProperties(), true);
-        if (!autoRegister) {
+        final Object autoRegister = sessionFactory.getProperties().get(AUTO_REGISTER);
+        if (autoRegister != null && !Boolean.parseBoolean((String)autoRegister)) {
             LOG.debug("Skipping HibernateAudit listener auto registration");
             return;
         }
