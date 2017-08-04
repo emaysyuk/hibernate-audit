@@ -18,11 +18,11 @@
  */
 package com.googlecode.hibernate.audit.listener;
 
-import java.util.Map;
-
 import org.hibernate.HibernateException;
 import org.hibernate.boot.Metadata;
-import org.hibernate.cfg.Configuration;
+import org.hibernate.engine.config.spi.ConfigurationService;
+import org.hibernate.engine.config.spi.StandardConverters;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.event.spi.PostCollectionRecreateEvent;
 import org.hibernate.event.spi.PostCollectionRecreateEventListener;
 import org.hibernate.event.spi.PostDeleteEvent;
@@ -37,6 +37,7 @@ import org.hibernate.event.spi.PreCollectionUpdateEvent;
 import org.hibernate.event.spi.PreCollectionUpdateEventListener;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.service.spi.SessionFactoryServiceRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +45,7 @@ import com.googlecode.hibernate.audit.HibernateAudit;
 import com.googlecode.hibernate.audit.Version;
 import com.googlecode.hibernate.audit.configuration.AuditConfiguration;
 import com.googlecode.hibernate.audit.configuration.AuditConfigurationObserver;
+import com.googlecode.hibernate.audit.configuration.ConfigurationHolder;
 import com.googlecode.hibernate.audit.synchronization.AuditSynchronization;
 import com.googlecode.hibernate.audit.synchronization.work.AuditWorkUnit;
 import com.googlecode.hibernate.audit.synchronization.work.DeleteAuditWorkUnit;
@@ -52,53 +54,36 @@ import com.googlecode.hibernate.audit.synchronization.work.InsertCollectionAudit
 import com.googlecode.hibernate.audit.synchronization.work.RemoveCollectionAuditWorkUnit;
 import com.googlecode.hibernate.audit.synchronization.work.UpdateAuditWorkUnit;
 import com.googlecode.hibernate.audit.synchronization.work.UpdateCollectionAuditWorkUnit;
-import com.googlecode.hibernate.audit.util.ConcurrentReferenceHashMap;
 
 public class AuditListener implements PostInsertEventListener, PostUpdateEventListener, PostDeleteEventListener, PreCollectionUpdateEventListener, PreCollectionRemoveEventListener,
         PostCollectionRecreateEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(AuditListener.class);
-
-    private static final Map<Configuration, AuditConfiguration> CONFIGURATION_MAP = new ConcurrentReferenceHashMap<Configuration, AuditConfiguration>(16,
-            ConcurrentReferenceHashMap.ReferenceType.WEAK, ConcurrentReferenceHashMap.ReferenceType.STRONG);
-    
-    public static final String DEFAULT_AUDIT_MODEL_HBM_PATH = "com/googlecode/hibernate/audit/model/";
-    public static final String DEFAULT_AUDIT_MODEL_HBM_NAME = "audit.hbm.xml";
-    public static final String DEFAULT_AUDIT_MODEL_HBM_LOCATION = DEFAULT_AUDIT_MODEL_HBM_PATH + DEFAULT_AUDIT_MODEL_HBM_NAME;
-
     private AuditConfiguration auditConfiguration;
     private boolean recordEmptyCollectionsOnInsert = true;
     
     public void cleanup() {
-        if (auditConfiguration != null && auditConfiguration.getHibernateConfiguration() != null) {
-            CONFIGURATION_MAP.remove(auditConfiguration.getHibernateConfiguration());
+        if (auditConfiguration != null && auditConfiguration.getSessionFactory() != null) {
+            ConfigurationHolder.removeAuditConfiguration(auditConfiguration.getSessionFactory());
         }
     }
-    
-    public static AuditConfiguration getAuditConfiguration(Configuration configuration) {
-    	return CONFIGURATION_MAP.get(configuration);
-    }
 
-    public void initialize(Configuration conf, Metadata metadata) {
+    public void initialize(SessionFactoryImplementor sessionFactory, Metadata metadata, SessionFactoryServiceRegistry serviceRegistry) {
         try {
-            if (conf.getProperty(HibernateAudit.AUDIT_RECORD_EMPTY_COLLECTIONS_ON_INSERT_PROPERTY) != null) {
-            	recordEmptyCollectionsOnInsert = Boolean.valueOf(conf.getProperty(HibernateAudit.AUDIT_RECORD_EMPTY_COLLECTIONS_ON_INSERT_PROPERTY)).booleanValue();
+            recordEmptyCollectionsOnInsert = serviceRegistry.getService(ConfigurationService.class).getSetting(HibernateAudit.AUDIT_RECORD_EMPTY_COLLECTIONS_ON_INSERT_PROPERTY, StandardConverters.BOOLEAN, true);
+
+            auditConfiguration = ConfigurationHolder.getAuditConfiguration(sessionFactory);
+
+            if (auditConfiguration == null) {
+                Version.touch();
+                auditConfiguration = new AuditConfiguration(sessionFactory, metadata);
+
+                processDynamicUpdate(metadata, serviceRegistry);
+
+                ConfigurationHolder.putAuditConfiguration(sessionFactory, auditConfiguration);
+
+                processAuditConfigurationObserver(serviceRegistry);
             }
-            
-            if (CONFIGURATION_MAP.containsKey(conf)) {
-            	auditConfiguration = getAuditConfiguration(conf);
-            	// already initialized
-                return;
-            }
-            Version.touch();
-            auditConfiguration = new AuditConfiguration(conf, metadata);
-
-            processDynamicUpdate(conf, metadata);
-
-            CONFIGURATION_MAP.put(conf, auditConfiguration);
-
-            processAuditConfigurationObserver(conf);
-            
         } catch (RuntimeException e) {
             if (log.isErrorEnabled()) {
                 log.error("RuntimeExcpetion occured during AuditListener initialization, will re-throw the exception", e);
@@ -107,9 +92,8 @@ public class AuditListener implements PostInsertEventListener, PostUpdateEventLi
         }
     }
 
-    private void processDynamicUpdate(Configuration conf, Metadata metadata) {
-        if (conf.getProperty(HibernateAudit.AUDIT_SET_DYNAMIC_UPDATE_FOR_AUDITED_MODEL_PROPERTY) != null
-                && Boolean.valueOf(conf.getProperty(HibernateAudit.AUDIT_SET_DYNAMIC_UPDATE_FOR_AUDITED_MODEL_PROPERTY))) {
+    private void processDynamicUpdate(Metadata metadata, SessionFactoryServiceRegistry serviceRegistry) {
+        if (serviceRegistry.getService(ConfigurationService.class).getSetting(HibernateAudit.AUDIT_SET_DYNAMIC_UPDATE_FOR_AUDITED_MODEL_PROPERTY, StandardConverters.BOOLEAN, false)) {
             for (PersistentClass persistentClass : metadata.getEntityBindings()) {
                 persistentClass.setDynamicUpdate(true);
                 if (log.isInfoEnabled()) {
@@ -119,8 +103,8 @@ public class AuditListener implements PostInsertEventListener, PostUpdateEventLi
         }
     }
 
-    private void processAuditConfigurationObserver(Configuration conf) {
-        String observerClazzProperty = conf.getProperty(HibernateAudit.AUDIT_CONFIGURATION_OBSERVER_PROPERTY);
+    private void processAuditConfigurationObserver(SessionFactoryServiceRegistry serviceRegistry) {
+        String observerClazzProperty = serviceRegistry.getService(ConfigurationService.class).getSetting(HibernateAudit.AUDIT_CONFIGURATION_OBSERVER_PROPERTY, StandardConverters.STRING, null);
 
         if (observerClazzProperty != null) {
             ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();

@@ -293,7 +293,7 @@ public final class HibernateAudit {
     }
 
     public static String getEntityName(AuditConfiguration configuration, Session session, String auditTypeClassName) {
-    	return configuration.getExtensionManager().getAuditableInformationProvider().getEntityName(configuration.getHibernateMetadata(), session, auditTypeClassName);
+    	return configuration.getExtensionManager().getAuditableInformationProvider().getEntityName(configuration.getMetadata(), session, auditTypeClassName);
     }
 
     public static AuditConfiguration getAuditConfiguration(Session session) {

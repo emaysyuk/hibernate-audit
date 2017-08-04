@@ -51,11 +51,9 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
     private static final Map<SessionFactory, AuditConfiguration> CONFIGURATION_MAP = new ConcurrentReferenceHashMap<SessionFactory, AuditConfiguration>(16, ConcurrentReferenceHashMap.ReferenceType.WEAK, ConcurrentReferenceHashMap.ReferenceType.STRONG);
 
     private AuditConfiguration auditConfiguration;
-    private Metadata metadata;
 
-    public AuditSessionFactoryObserver(AuditConfiguration auditConfiguration, Metadata metadata) {
+    public AuditSessionFactoryObserver(AuditConfiguration auditConfiguration) {
         this.auditConfiguration = auditConfiguration;
-        this.metadata = metadata;
     }
 
     public void sessionFactoryCreated(SessionFactory sessionfactory) {
@@ -116,8 +114,8 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
     }
 
     private AuditType initializeEntityAuditType(Session session, String entityName, boolean initializeProperties) {
-        PersistentClass classMapping = metadata.getEntityBinding(entityName);
-        String auditTypeClassName = auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(metadata, entityName);
+        PersistentClass classMapping = auditConfiguration.getMetadata().getEntityBinding(entityName);
+        String auditTypeClassName = auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(auditConfiguration.getMetadata(), entityName);
 
         AuditType auditType = HibernateAudit.getAuditType(session, auditTypeClassName);
         if (auditType == null) {
@@ -145,7 +143,7 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
     }
 
     private AuditType initializeComponentAuditType(Session session, CompositeType type) {
-        String auditTypeClassName = auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(metadata, type);
+        String auditTypeClassName = auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(auditConfiguration.getMetadata(), type);
 
         AuditType componentAuditType = HibernateAudit.getAuditType(session, auditTypeClassName);
         if (componentAuditType == null) {
@@ -167,7 +165,7 @@ public class AuditSessionFactoryObserver implements SessionFactoryObserver {
     }
 
     private AuditType initializePrimitiveAuditType(Session session, Type type) {
-        String auditTypeClassName = auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(metadata, type);
+        String auditTypeClassName = auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(auditConfiguration.getMetadata(), type);
         AuditType auditType = HibernateAudit.getAuditType(session, auditTypeClassName);
 
         if (auditType == null) {
