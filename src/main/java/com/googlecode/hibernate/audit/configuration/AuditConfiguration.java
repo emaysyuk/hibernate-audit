@@ -17,8 +17,6 @@
  */
 package com.googlecode.hibernate.audit.configuration;
 
-import java.lang.ref.WeakReference;
-
 import org.hibernate.boot.Metadata;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 
@@ -28,20 +26,20 @@ import com.googlecode.hibernate.audit.synchronization.AuditSynchronizationManage
 public class AuditConfiguration {
     private AuditSynchronizationManager auditSynchronizationManager = new AuditSynchronizationManager(this);
     private ExtensionManager extensionManager = new ExtensionManager();
-    private WeakReference<SessionFactoryImplementor> sessionFactoryWeakReference;
-    private WeakReference<Metadata> metadataWeakReference;
+    private SessionFactoryImplementor sessionFactory;
+    private Metadata metadata;
 
     public AuditConfiguration(SessionFactoryImplementor sessionFactory, Metadata metadata) {
-        this.sessionFactoryWeakReference = new WeakReference<>(sessionFactory);
-        this.metadataWeakReference = new WeakReference<>(metadata);
+        this.sessionFactory = sessionFactory;
+        this.metadata = metadata;
     }
 
     public Metadata getMetadata() {
-        return metadataWeakReference.get();
+        return metadata;
     }
 
     public SessionFactoryImplementor getSessionFactory() {
-        return sessionFactoryWeakReference.get();
+        return sessionFactory;
     }
 
     public AuditSynchronizationManager getAuditSynchronizationManager() {
