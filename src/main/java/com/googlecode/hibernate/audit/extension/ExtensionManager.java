@@ -30,8 +30,6 @@ import com.googlecode.hibernate.audit.extension.event.AuditLogicalGroupProvider;
 import com.googlecode.hibernate.audit.extension.event.DefaultAuditLogicalGroupProvider;
 import com.googlecode.hibernate.audit.extension.security.DefaultSecurityInformationProvider;
 import com.googlecode.hibernate.audit.extension.security.SecurityInformationProvider;
-import com.googlecode.hibernate.audit.extension.syncronization.DefaultTransactionSyncronization;
-import com.googlecode.hibernate.audit.extension.syncronization.TransactionSyncronization;
 import com.googlecode.hibernate.audit.extension.transaction.AuditTransactionAttributeProvider;
 import com.googlecode.hibernate.audit.extension.transaction.DefaultAuditTransactionAttributeProvider;
 import com.googlecode.hibernate.audit.extension.transaction.DefaultTransactionalContext;
@@ -43,7 +41,6 @@ public final class ExtensionManager {
     private AuditLogicalGroupProvider auditLogicalGroupProvider = new DefaultAuditLogicalGroupProvider();
     private SecurityInformationProvider securityInformationProvider = new DefaultSecurityInformationProvider();
     private AuditTransactionAttributeProvider auditTransactionAttributeProvider = new DefaultAuditTransactionAttributeProvider();
-    private TransactionSyncronization transactionSyncronization = new DefaultTransactionSyncronization();
     private ConcurrentModificationProvider concurrentModificationProvider = new DefaultConcurrentModificationProvider();
     private ConcurrentModificationCheckProvider concurrentModificationCheckProvider = new DefaultConcurrentModificationCheckProvider();
     private TransactionalContext transactionalContext = new DefaultTransactionalContext();
@@ -89,14 +86,6 @@ public final class ExtensionManager {
 
     public void setAuditTransactionAttributeProvider(AuditTransactionAttributeProvider auditTransactionAttributeProvider) {
         this.auditTransactionAttributeProvider = auditTransactionAttributeProvider;
-    }
-
-    public TransactionSyncronization getTransactionSyncronization() {
-        return transactionSyncronization;
-    }
-
-    public void setTransactionSyncronization(TransactionSyncronization transactionSyncronization) {
-        this.transactionSyncronization = transactionSyncronization;
     }
 
     public ConcurrentModificationProvider getConcurrentModificationProvider() {

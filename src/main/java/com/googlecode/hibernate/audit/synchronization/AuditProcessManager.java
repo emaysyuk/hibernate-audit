@@ -21,6 +21,10 @@ package com.googlecode.hibernate.audit.synchronization;
 import com.googlecode.hibernate.audit.configuration.AuditConfiguration;
 import com.googlecode.hibernate.audit.util.ConcurrentReferenceHashMap;
 import org.hibernate.Transaction;
+import org.hibernate.action.spi.AfterTransactionCompletionProcess;
+import org.hibernate.action.spi.BeforeTransactionCompletionProcess;
+import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.event.spi.EventSource;
 
 import java.util.Map;
@@ -38,11 +42,27 @@ public final class AuditProcessManager {
     public AuditProcess get(EventSource session) {
         final Transaction transaction = session.accessTransaction();
 
-        AuditProcess auditProcess = auditProcesses.get(transaction);
-        if (auditProcess == null) {
-            auditProcess = new AuditProcess(this, session);
+        AuditProcess auditProcess = auditProcesses.get( transaction );
+        if ( auditProcess == null ) {
+            auditProcess = new AuditProcess( this, session );
             auditProcesses.put(transaction, auditProcess);
-            auditConfiguration.getExtensionManager().getTransactionSyncronization().registerSynchronization(session, auditProcess);
+
+            session.getActionQueue().registerProcess(new BeforeTransactionCompletionProcess() {
+                @Override
+                public void doBeforeTransactionCompletion(SessionImplementor session) {
+                    AuditProcess process = auditProcesses.get(transaction);
+                    if (process != null) {
+                        process.doBeforeTransactionCompletion(session);
+                    }
+                }
+            });
+
+            session.getActionQueue().registerProcess(new AfterTransactionCompletionProcess() {
+                @Override
+                public void doAfterTransactionCompletion(boolean success, SharedSessionContractImplementor session) {
+                    auditProcesses.remove(transaction);
+                }
+            });
         }
 
         return auditProcess;
@@ -50,9 +70,5 @@ public final class AuditProcessManager {
 
     public AuditConfiguration getAuditConfiguration() {
         return auditConfiguration;
-    }
-
-    public void remove(Transaction transaction) {
-        auditProcesses.remove(transaction);
     }
 }

@@ -50,7 +50,7 @@ import com.googlecode.hibernate.audit.model.AuditTransaction;
 import com.googlecode.hibernate.audit.model.AuditTransactionAttribute;
 import com.googlecode.hibernate.audit.synchronization.work.AuditWorkUnit;
 
-public class AuditProcess implements BeforeTransactionCompletionProcess, Synchronization {
+public class AuditProcess implements BeforeTransactionCompletionProcess {
 	private static final Logger log = LoggerFactory.getLogger(AuditProcess.class);
 
 	private final AuditProcessManager manager;
@@ -212,29 +212,4 @@ public class AuditProcess implements BeforeTransactionCompletionProcess, Synchro
 		Long loadAuditTransactionId = auditConfiguration.getExtensionManager().getConcurrentModificationProvider().getLoadAuditTransactionId();
 		auditConfiguration.getExtensionManager().getConcurrentModificationCheckProvider().concurrentModificationCheck(auditConfiguration, session, auditLogicalGroups, auditTransaction, loadAuditTransactionId);
 	}
-
-    public void beforeCompletion() {
-        if (workUnits.size() == 0) {
-            return;
-        }
-        if (!isMarkedForRollback(auditedSession)) {
-            try {
-                if (!FlushMode.isManualFlushMode(auditedSession.getHibernateFlushMode())) {
-                    auditedSession.flush();
-                }
-                executeInSession(auditedSession);
-            } catch (RuntimeException e) {
-                if (log.isErrorEnabled()) {
-                    log.error("RuntimeException occurred in beforeCompletion, will rollback and re-throw exception", e);
-                }
-                rollback();
-                throw e;
-            }
-        }
-    }
-
-    @Override
-    public void afterCompletion(int arg0) {
-        manager.remove(transaction);
-    }
 }
