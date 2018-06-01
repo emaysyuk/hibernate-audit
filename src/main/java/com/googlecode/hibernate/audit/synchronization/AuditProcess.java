@@ -53,17 +53,15 @@ import com.googlecode.hibernate.audit.synchronization.work.AuditWorkUnit;
 public class AuditProcess implements BeforeTransactionCompletionProcess {
 	private static final Logger log = LoggerFactory.getLogger(AuditProcess.class);
 
-	private final AuditProcessManager manager;
 	private final Session auditedSession;
 	private final Transaction transaction;
 	private LinkedList<AuditWorkUnit> workUnits = new LinkedList<AuditWorkUnit>();
 	private AuditConfiguration auditConfiguration;
 
-	public AuditProcess(AuditProcessManager manager, Session session) {
-		this.manager = manager;
+	public AuditProcess(AuditConfiguration auditConfiguration, Session session) {
 		this.auditedSession = session;
 		this.transaction = session.getTransaction();
-		this.auditConfiguration = manager.getAuditConfiguration();
+		this.auditConfiguration = auditConfiguration;
 	}
 
 	public void addWorkUnit(AuditWorkUnit workUnit) {

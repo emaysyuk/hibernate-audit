@@ -44,7 +44,7 @@ public final class AuditProcessManager {
 
         AuditProcess auditProcess = auditProcesses.get( transaction );
         if ( auditProcess == null ) {
-            auditProcess = new AuditProcess( this, session );
+            auditProcess = new AuditProcess( auditConfiguration, session );
             auditProcesses.put(transaction, auditProcess);
 
             session.getActionQueue().registerProcess(new BeforeTransactionCompletionProcess() {
@@ -66,9 +66,5 @@ public final class AuditProcessManager {
         }
 
         return auditProcess;
-    }
-
-    public AuditConfiguration getAuditConfiguration() {
-        return auditConfiguration;
     }
 }
