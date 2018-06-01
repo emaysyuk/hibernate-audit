@@ -54,13 +54,11 @@ public class AuditProcess implements BeforeTransactionCompletionProcess {
 	private static final Logger log = LoggerFactory.getLogger(AuditProcess.class);
 
 	private final Session auditedSession;
-	private final Transaction transaction;
 	private LinkedList<AuditWorkUnit> workUnits = new LinkedList<AuditWorkUnit>();
 	private AuditConfiguration auditConfiguration;
 
 	public AuditProcess(AuditConfiguration auditConfiguration, Session session) {
 		this.auditedSession = session;
-		this.transaction = session.getTransaction();
 		this.auditConfiguration = auditConfiguration;
 	}
 
