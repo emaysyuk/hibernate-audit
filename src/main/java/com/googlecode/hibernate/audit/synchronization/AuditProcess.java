@@ -26,20 +26,14 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import javax.transaction.Status;
-import javax.transaction.Synchronization;
-import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
 
 import org.hibernate.ConnectionReleaseMode;
 import org.hibernate.FlushMode;
 import org.hibernate.Session;
-import org.hibernate.Transaction;
-import org.hibernate.TransactionException;
 import org.hibernate.action.spi.BeforeTransactionCompletionProcess;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.engine.transaction.jta.platform.spi.JtaPlatform;
 import org.hibernate.resource.transaction.spi.TransactionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,57 +65,38 @@ public class AuditProcess implements BeforeTransactionCompletionProcess {
 		if (workUnits.size() == 0) {
 			return;
 		}
-		if (!isMarkedForRollback(auditedSession)) {
-			try {
-				if (FlushMode.MANUAL == auditedSession.getHibernateFlushMode()) {
-					 Session temporarySession = null;
-					try {
-						temporarySession = ((Session) session).sessionWithOptions().transactionContext()
-								.autoClose(false).connectionReleaseMode(ConnectionReleaseMode.AFTER_TRANSACTION)
-								.openSession();
-						executeInSession(temporarySession);
-						temporarySession.flush();
-					} finally {
-						if (temporarySession != null) {
-							temporarySession.close();
-						}
+
+		if (!session.getTransactionCoordinator().isActive()) {
+			log.debug("Skipping hibernate-audit transaction hook due to non-active (most likely marked as rollback) transaction");
+			return;
+		}
+
+		try {
+			if (FlushMode.MANUAL == auditedSession.getHibernateFlushMode()) {
+				Session temporarySession = null;
+				try {
+					temporarySession = ((Session) session).sessionWithOptions().transactionContext()
+						.autoClose(false).connectionReleaseMode(ConnectionReleaseMode.AFTER_TRANSACTION)
+						.openSession();
+					executeInSession(temporarySession);
+					temporarySession.flush();
+				} finally {
+					if (temporarySession != null) {
+						temporarySession.close();
 					}
-				} else {
-					auditedSession.flush();
-					executeInSession(auditedSession);
 				}
-			} catch (RuntimeException e) {
-				if (log.isErrorEnabled()) {
-					log.error("RuntimeException occurred in beforeCompletion, will rollback and re-throw exception", e);
-				}
-				rollback();
-				throw e;
+			} else {
+				auditedSession.flush();
+				executeInSession(auditedSession);
 			}
-		}
-	}
-
-	private boolean isMarkedForRollback(Session session) {
-		JtaPlatform jtaPlatform = ((SessionFactoryImplementor) auditedSession.getSessionFactory()).getSettings().getJtaPlatform();
-		TransactionManager manager = null;
-		if (jtaPlatform != null) {
-			manager = jtaPlatform.retrieveTransactionManager();
-		}
-		if (manager != null) {
-			try {
-				int status = manager.getStatus();
-				if (status==Status.STATUS_MARKED_ROLLBACK ||
-					       status==Status.STATUS_ROLLING_BACK ||
-					       status==Status.STATUS_ROLLEDBACK) {
-					return true;
-				}
-			} catch (SystemException e) {
-				throw new TransactionException("Unable to get the transaction status.", e);
+		} catch (RuntimeException e) {
+			if (log.isErrorEnabled()) {
+				log.error("RuntimeException occurred in beforeCompletion, will rollback and re-throw exception", e);
 			}
-		} else {
-			return session.getTransaction().getStatus() == TransactionStatus.ROLLED_BACK;
+			rollback();
+			throw e;
 		}
 
-		return false;
 	}
 
 	private void rollback() {
