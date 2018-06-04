@@ -26,11 +26,11 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import org.hibernate.ConnectionReleaseMode;
 import org.hibernate.FlushMode;
 import org.hibernate.Session;
 import org.hibernate.action.spi.BeforeTransactionCompletionProcess;
 import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.resource.jdbc.spi.PhysicalConnectionHandlingMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,12 +67,14 @@ public class AuditProcess implements BeforeTransactionCompletionProcess {
 			return;
 		}
 
-		if (FlushMode.MANUAL == auditedSession.getHibernateFlushMode()) {
+		if (FlushMode.MANUAL == session.getHibernateFlushMode() || session.isClosed()) {
 			Session temporarySession = null;
 			try {
-				temporarySession = ((Session) session).sessionWithOptions().transactionContext()
-					.autoClose(false).connectionReleaseMode(ConnectionReleaseMode.AFTER_TRANSACTION)
-					.openSession();
+                temporarySession = session.sessionWithOptions()
+                    .connection()
+                    .autoClose(false)
+                    .connectionHandlingMode(PhysicalConnectionHandlingMode.DELAYED_ACQUISITION_AND_RELEASE_AFTER_TRANSACTION)
+                    .openSession();
 				executeInSession(temporarySession);
 				temporarySession.flush();
 			} finally {
@@ -81,10 +83,11 @@ public class AuditProcess implements BeforeTransactionCompletionProcess {
 				}
 			}
 		} else {
-			auditedSession.flush();
-			executeInSession(auditedSession);
-		}
+			executeInSession(session);
 
+            // explicitly flushing the session, as the auto-flush may have already happened.
+            session.flush();
+        }
 	}
 
 	private void executeInSession(Session session) {
@@ -134,10 +137,6 @@ public class AuditProcess implements BeforeTransactionCompletionProcess {
 			session.save(auditTransaction);
 			for (AuditLogicalGroup storedAuditLogicalGroup : auditLogicalGroups) {
 				storedAuditLogicalGroup.setLastUpdatedAuditTransactionId(auditTransaction.getId());
-			}
-
-			if (!FlushMode.isManualFlushMode(session.getHibernateFlushMode())) {
-				session.flush();
 			}
 		} finally {
 			if (log.isDebugEnabled()) {
