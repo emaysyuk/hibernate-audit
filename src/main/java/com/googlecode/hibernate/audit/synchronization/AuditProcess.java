@@ -26,15 +26,11 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import javax.transaction.TransactionManager;
-
 import org.hibernate.ConnectionReleaseMode;
 import org.hibernate.FlushMode;
 import org.hibernate.Session;
 import org.hibernate.action.spi.BeforeTransactionCompletionProcess;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.resource.transaction.spi.TransactionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,52 +67,24 @@ public class AuditProcess implements BeforeTransactionCompletionProcess {
 			return;
 		}
 
-		try {
-			if (FlushMode.MANUAL == auditedSession.getHibernateFlushMode()) {
-				Session temporarySession = null;
-				try {
-					temporarySession = ((Session) session).sessionWithOptions().transactionContext()
-						.autoClose(false).connectionReleaseMode(ConnectionReleaseMode.AFTER_TRANSACTION)
-						.openSession();
-					executeInSession(temporarySession);
-					temporarySession.flush();
-				} finally {
-					if (temporarySession != null) {
-						temporarySession.close();
-					}
-				}
-			} else {
-				auditedSession.flush();
-				executeInSession(auditedSession);
-			}
-		} catch (RuntimeException e) {
-			if (log.isErrorEnabled()) {
-				log.error("RuntimeException occurred in beforeCompletion, will rollback and re-throw exception", e);
-			}
-			rollback();
-			throw e;
-		}
-
-	}
-
-	private void rollback() {
-		try {
-			if (auditedSession != null && auditedSession.getTransaction() != null && auditedSession.getTransaction().getStatus() == TransactionStatus.ACTIVE) {
-				auditedSession.getTransaction().rollback();
-			} else if (auditedSession != null && ((SessionFactoryImplementor) auditedSession.getSessionFactory()).getSettings().getJtaPlatform() != null) {
-				TransactionManager transactionManager = ((SessionFactoryImplementor) auditedSession.getSessionFactory()).getSettings().getJtaPlatform().retrieveTransactionManager();
-				if (transactionManager != null) {
-					transactionManager.setRollbackOnly();
+		if (FlushMode.MANUAL == auditedSession.getHibernateFlushMode()) {
+			Session temporarySession = null;
+			try {
+				temporarySession = ((Session) session).sessionWithOptions().transactionContext()
+					.autoClose(false).connectionReleaseMode(ConnectionReleaseMode.AFTER_TRANSACTION)
+					.openSession();
+				executeInSession(temporarySession);
+				temporarySession.flush();
+			} finally {
+				if (temporarySession != null) {
+					temporarySession.close();
 				}
 			}
-		} catch (Exception se) {
-			if (log.isWarnEnabled()) {
-				// this is the best that we can do - we've tried to mark
-				// the transaction as rolled back but we failed - the
-				// only thing left if to log the exception
-				log.warn("Exception occured during rollback, only logging the exception", se);
-			}
+		} else {
+			auditedSession.flush();
+			executeInSession(auditedSession);
 		}
+
 	}
 
 	private void executeInSession(Session session) {
