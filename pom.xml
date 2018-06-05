@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.googlecode</groupId>
   <artifactId>hibernate-audit</artifactId>
-  <version>5.2.6.P1</version>
+  <version>5.2.6.P2</version>
   <packaging>jar</packaging>
   <name>hibernate-audit</name>
   <url>http://code.google.com/p/hibernate-audit/</url>

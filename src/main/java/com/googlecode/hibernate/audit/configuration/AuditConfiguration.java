@@ -21,10 +21,10 @@ import org.hibernate.boot.Metadata;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 
 import com.googlecode.hibernate.audit.extension.ExtensionManager;
-import com.googlecode.hibernate.audit.synchronization.AuditSynchronizationManager;
+import com.googlecode.hibernate.audit.synchronization.AuditProcessManager;
 
 public class AuditConfiguration {
-    private AuditSynchronizationManager auditSynchronizationManager = new AuditSynchronizationManager(this);
+    private AuditProcessManager auditProcessManager = new AuditProcessManager(this);
     private ExtensionManager extensionManager = new ExtensionManager();
     private SessionFactoryImplementor sessionFactory;
     private Metadata metadata;
@@ -42,8 +42,8 @@ public class AuditConfiguration {
         return sessionFactory;
     }
 
-    public AuditSynchronizationManager getAuditSynchronizationManager() {
-        return auditSynchronizationManager;
+    public AuditProcessManager getAuditProcessManager() {
+        return auditProcessManager;
     }
 
     public ExtensionManager getExtensionManager() {
