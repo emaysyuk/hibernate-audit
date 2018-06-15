@@ -42,10 +42,8 @@ public abstract class AbstractCollectionAuditWorkUnit extends AbstractAuditWorkU
 
     protected void processElement(Session session, AuditConfiguration auditConfiguration, Object entityOwner, Object element, Type elementType, String propertyName, long index,
             EntityAuditObject auditObject, AuditEvent auditEvent) {
-    	
-    	String entityName = session.getEntityName(entityOwner);
-    	
-        AuditTypeField auditField = HibernateAudit.getAuditField(session, auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(auditConfiguration.getMetadata(), entityName), propertyName);
+
+        AuditTypeField auditField = HibernateAudit.getAuditField(session, auditConfiguration.getExtensionManager().getAuditableInformationProvider().getAuditTypeClassName(auditConfiguration.getMetadata(), getEntityName()), propertyName);
         AuditObjectProperty property = null;
         
         if (elementType.isEntityType()) {
